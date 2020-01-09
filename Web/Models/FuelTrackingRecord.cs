@@ -18,6 +18,7 @@ namespace Web.Models
         }
 
         public string Id { get; set; }
+        public string UserId { get; set; }
         public DateTime DateTime { set; get; }
         public float? FuelFilled { set; get; }
         public float? Cost { set; get; }

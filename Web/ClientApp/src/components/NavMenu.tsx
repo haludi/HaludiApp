@@ -4,12 +4,16 @@ import { Link } from 'react-router-dom';
 import './NavMenu.css';
 import Register from "./user/Register";
 import Login from "./user/Login";
-import {LoggedUser} from "../store/UserStore";
+import {LoggedUser, State} from "../store/UserStore";
 import Logout from "./user/UserMenu";
 import {connect} from "react-redux";
 import {ApplicationState} from "../store";
 
-class NavMenu extends React.PureComponent<{}, { isOpen: boolean }> {
+type Props =
+    { isOpen: boolean } // ... state we've requested from the Redux store
+    & State;
+
+class NavMenu extends React.PureComponent<Props> {
     public state = {
         isOpen: false
     };

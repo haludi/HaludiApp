@@ -108,23 +108,13 @@ type KnownPanelPictureAction = AddPanelPictureAction | CleanPanelPicturesAction 
 export const actionCreators = {
     requestFuelTrackingRecords: (startIndex: number, pageSize: number): AppThunkAction<KnownGetAction> => (dispatch, getState) => {
         const appState = getState();
-        
-        const user = LoggedUser.get();
-        if(!user)
-            return;
-        
-        const config = {
-            headers: {'Authorization': "bearer " + user.token}
-        };
-            
         if (appState && appState.fuelTrackingRecords && startIndex !== appState.fuelTrackingRecords.startIndex) {
-            axios.get("fueltracking/first-step?pageno=0&pagesize=10", config)
-                .then(response => response.data as Promise<FuelTrackingRecord[]>)
-                .then(data => {
-                    dispatch({ type: 'RECEIVE_FUEL_TRACKING_RECORDS', startIndex: startIndex, records: data });
+            LoggedUser.getRequest<FuelTrackingRecord[]>("fuelTracking/first-step?pageNo=0&pageSize=10")
+                .then(r => {
+                    dispatch({ type: 'RECEIVE_FUEL_TRACKING_RECORDS', startIndex: startIndex, records: r.data });
                 })
-                .catch(r =>{
-                    dispatch({ type: 'ERROR_FUEL_TRACKING_RECORDS', errorMessage: r.message});
+                .catch(e =>{
+                    dispatch({ type: 'ERROR_FUEL_TRACKING_RECORDS', errorMessage: e.message});
                 });
 
             dispatch({ type: 'REQUEST_FUEL_TRACKING_RECORDS', startIndex: startIndex , pageSize: pageSize});
@@ -132,6 +122,7 @@ export const actionCreators = {
     },
     takeFtrPhotos: (date: Date | null, onSuccess: () => any): AppThunkAction<KnownTakeFtrPhotosAction> => (dispatch, getState) => {
         const appState = getState();
+
         if (appState && appState.fuelTrackingRecords && appState.fuelTrackingRecords.panelPictures) {
             let pictures = appState.fuelTrackingRecords.panelPictures;
             if(pictures.motorbikePanelPicture && pictures.bumpPanelPicture)
@@ -141,17 +132,10 @@ export const actionCreators = {
                 form.append("motorbikePanelPicture", pictures.motorbikePanelPicture);
                 if(date)
                     form.append("date", date.toUTCString());
-                
-                const viewModel = {
-                    bumpPanelPicture: pictures.bumpPanelPicture,
-                    motorbikePanelPicture: pictures.motorbikePanelPicture,
-                    // date: date,
-                };
-                
-                axios.post(`/api/v1/fuel-tracking/take-photos`,form)
-                    .then(response => response.data as Promise<FuelTrackingRecord>)
-                    .then(record => {
-                        dispatch({ type: 'RESPOND_TAKE_FTR_PHOTOS', record});
+
+                LoggedUser.postRequest<FuelTrackingRecord>(`/api/v1/fuel-tracking/take-photos`, form)
+                    .then(r => {
+                        dispatch({ type: 'RESPOND_TAKE_FTR_PHOTOS', record: r.data});
                         dispatch({type: 'SHOW_MESSAGE', props: {message: "Record created", variant: "success"}});
                         onSuccess();
                     })
@@ -172,11 +156,12 @@ export const actionCreators = {
     fillFtrDetails: (record: FuelTrackingRecord, onSuccess: ()=>void, onFail: ()=>void): AppThunkAction<KnownFillDataAction> => (dispatch, getState) => {
         if(record.id == null  || record.fuelFilled == null || record.cost == null || record.mileage == null)
             return;
-        axios.post('/api/v1/fuel-tracking/fill-detail', record)
+
+        LoggedUser.postRequest('/api/v1/fuel-tracking/fill-detail', record)
             .then(r => {
-                    onSuccess();
-                    // @ts-ignore
-                    dispatch({ type: 'RECEIVE_FILL_FTR_DETAIL', recordId: record.id});
+                onSuccess();
+                // @ts-ignore
+                dispatch({ type: 'RECEIVE_FILL_FTR_DETAIL', recordId: record.id});
             })
             .catch(r =>{
                 onFail();
@@ -192,7 +177,6 @@ export const actionCreators = {
     },
     addPanelPicture: (panel: Panel, picture: File): AppThunkAction<AddPanelPictureAction> => (dispatch, getState) => {
         let reader = new FileReader();
-        // reader.readAsDataURL(picture);
         
         reader.onloadend = (e) => {
             if(typeof reader.result === 'string')

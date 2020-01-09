@@ -36,10 +36,16 @@ namespace Web.Controllers
             var context = HttpContext.Features.Get<IExceptionHandlerFeature>();
             if (context.Error is AppRequestException appException)
             {
-                if (context.Error is AppRequestNotFoundException)
+                switch (context.Error)
                 {
-                    statusCode = StatusCodes.Status404NotFound;
+                    case NotFoundRequestException _:
+                        statusCode = StatusCodes.Status404NotFound;
+                        break;
+                    case UnauthorizedRequestException _:
+                        statusCode = StatusCodes.Status401Unauthorized;
+                        break;
                 }
+
                 message = appException.Message;
             }
             
@@ -61,15 +67,20 @@ namespace Web.Controllers
     
     public class AppRequestException : AppException
     {
-        public AppRequestException(string message, AppException innerException) : base(message, innerException)
+        public AppRequestException(string message, AppException innerException = null) : base(message, innerException)
         {
         }
     }
     
-    public class AppRequestNotFoundException : AppRequestException
+    public class NotFoundRequestException : AppRequestException
     {
-        public AppRequestNotFoundException(string message, AppException innerException) : base(message, innerException)
+        public NotFoundRequestException(string message, AppException innerException = null) : base(message, innerException)
         {
         }
+    }
+    
+    public class UnauthorizedRequestException: AppRequestException
+    {
+        public UnauthorizedRequestException() : base("You are not authorized to perform this request") {}
     }
 }

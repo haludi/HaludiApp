@@ -73,7 +73,7 @@ function TakeFtrPhotoDialog({fuelTrackingRecords, popupMessage, cleanPanelPictur
                     <Button onClick={handleCancel} color="primary">
                         Cancel
                     </Button>
-                    <SubmitButton isInProgress={(fuelTrackingRecords.isPostingTakeFtrPhotos && true) || false} disabled={canSubscribe} handleSubmit={handleSubmit}/>
+                    <SubmitButton isInProgress={(fuelTrackingRecords.isPostingTakeFtrPhotos && true) || false} disabled={!canSubscribe} handleSubmit={handleSubmit}/>
                 </DialogActions>
             </Dialog>
         </div>

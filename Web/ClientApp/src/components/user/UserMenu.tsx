@@ -10,6 +10,7 @@ import {FlightTakeoff} from "@material-ui/icons";
 import {connect} from "react-redux";
 import {ApplicationState} from "../../store";
 import {State as NotificationState} from "../../store/PopupMessage";
+import {Redirect, useHistory} from "react-router";
 
 const StyledMenu = withStyles({
     paper: {
@@ -50,6 +51,7 @@ type Props =
     & typeof actionCreators;
 
 function UserMenu({ logout }: Props) {
+    const history = useHistory();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
     const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -61,6 +63,7 @@ function UserMenu({ logout }: Props) {
     };
 
     const handleLogout = () => {
+        history.push("/");
         logout();
         setAnchorEl(null);
     };

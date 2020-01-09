@@ -161,7 +161,7 @@ function RecordFuelTrackingTable({fuelTrackingRecords, popupMessage, fillFtrDeta
                         <Button onClick={handleCancel} color="primary">
                             Cancel
                         </Button>
-                        <SubmitButton isInProgress={isPosting} disabled={canSubscribe} handleSubmit={handleSubscribe}/>
+                        <SubmitButton isInProgress={isPosting} disabled={!canSubscribe} handleSubmit={handleSubscribe}/>
                     </DialogActions>
                 </div>
             </Dialog>

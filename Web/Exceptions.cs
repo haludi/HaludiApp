@@ -17,8 +17,5 @@ namespace Web
         public DuplicateException(string message) : base(message) {}
     }
     
-    public class RequiredException: AppException
-    {
-        public RequiredException(string message) : base(message) {}
-    }
+    
 }

@@ -35,7 +35,7 @@ namespace Web.Controllers
         {
             using var session = _store.OpenAsyncSession();
             var query = session.Query<FuelTrackingRecord>()
-                .Where(r => r.Mileage == null || r.FuelFilled == null || r.Cost == null);
+                .Where(r => r.Id == User.Identity.Name && (r.Mileage == null || r.FuelFilled == null || r.Cost == null));
 
             if (pageNo.HasValue && pageSize.HasValue)
             {
@@ -52,10 +52,16 @@ namespace Web.Controllers
         [HttpGet]
         public async Task<Stream> GetImageOf(string id, string imageOf)
         {
+            using var session = _store.OpenAsyncSession();
+            var isBelongToUser = await session.Query<FuelTrackingRecord>().AnyAsync(r => r.Id == id && r.UserId == User.Identity.Name);
+            if(false == isBelongToUser)
+                throw new UnauthorizedRequestException();
+            
             var image = await _store.Operations.SendAsync(new GetAttachmentOperation($"FuelTrackingRecords/{id}",
                 imageOf,
                 AttachmentType.Document,
                 changeVector: null));
+            
             return image.Stream;
         }
         
@@ -64,10 +70,15 @@ namespace Web.Controllers
         public async Task<FuelTrackingRecord> Post(IFormCollection form)
         {
             using var session = _store.OpenAsyncSession();
+            var userId = User.Identity.Name;
+            if(false == await session.Advanced.ExistsAsync(userId))
+                throw new UnauthorizedRequestException();
+            
             var containsKey = form.ContainsKey("date");
             var dateTime = containsKey ? DateTime.Parse(form["date"]) : DateTime.Now;
             var record = new FuelTrackingRecord
             {
+                UserId = userId,
                 DateTime = dateTime.ToUniversalTime()
             };
             await session.StoreAsync(record);
@@ -91,25 +102,37 @@ namespace Web.Controllers
 
         [HttpPost]
         [Route("/api/v1/fuel-tracking/fill-detail")]
-        public async Task Post1111([FromBody] FuelTrackingRecordViewModel model)
+        public async Task FillDetails([FromBody] FuelTrackingRecordViewModel model)
         {
-            await _store.Operations.SendAsync(new PatchOperation(
+            var status = await _store.Operations.SendAsync(new PatchOperation(
                 id: model.Id,
                 changeVector: null,
                 patch: new PatchRequest
                 {
                     Script = @"
-this.FuelFilled = args.FuelFilled
-this.Cost = args.Cost
-this.Mileage = args.Mileage
+if(this.UserId == args.UserId)
+{{
+    this.FuelFilled = args.FuelFilled
+    this.Cost = args.Cost
+    this.Mileage = args.Mileage
+}}
 ",
                     Values =
                     {
+                        {"UserId", User.Identity.Name},
                         {"FuelFilled", model.FuelFilled},
                         {"Cost", model.Cost},
                         {"Mileage", model.Mileage}
                     }
                 }));
+            
+            switch (status)
+            {
+                case PatchStatus.DocumentDoesNotExist:
+                    throw new NotFoundRequestException($"Fuel tracing record with Id {model.Id} not found");
+                case PatchStatus.NotModified:
+                    throw new UnauthorizedRequestException();
+            }
         }
     }
 }

@@ -1,8 +1,10 @@
 import { Action, Reducer } from 'redux';
 import { AppThunkAction } from './';
-import axios from "axios";
+import axios, {AxiosRequestConfig, AxiosResponse} from "axios";
+import {ShowMessageAction} from "./PopupMessage";
 
 export interface State {
+    email?: string; 
     loginInProgress?: boolean;
     registerInProgress?: boolean;
 }
@@ -35,6 +37,26 @@ export class LoggedUser {
     static remove = function(): void {
         localStorage.removeItem(LoggedUser.theKey);
     };
+    
+    static getHeader = function (): {} {
+        const user = LoggedUser.get();
+        if(!user)
+            throw new Error("Not authorize");
+
+        return  {Authorization: "bearer " + user.token};
+    };
+
+    static postRequest = function<T = any, R = AxiosResponse<T>>(url: string, data?: any, config?: AxiosRequestConfig): Promise<R>{
+        const header = LoggedUser.getHeader();
+        const innerConfig = {...config, headers: header};
+        return axios.post(url, data, innerConfig);
+    };
+
+    static getRequest = function<T = any, R = AxiosResponse<T>>(url: string, config?: AxiosRequestConfig): Promise<R>{
+        const header = LoggedUser.getHeader();
+        const innerConfig = {...config, headers: header};
+        return axios.get(url, innerConfig);
+    };
 }
 
 interface RequestRegisterAction {
@@ -46,7 +68,11 @@ interface ReceiveRegisterAction {
     user: User;
 }
 
-type KnownRegisterAction = RequestRegisterAction | ReceiveRegisterAction;
+interface ErrorRegisterAction {
+    type: 'ERROR_REGISTER';
+}
+
+type KnownRegisterAction = RequestRegisterAction | ReceiveRegisterAction | ErrorRegisterAction | ShowMessageAction;
 
 interface RequestLoginAction {
     type: 'REQUEST_LOGIN';
@@ -57,7 +83,11 @@ interface ReceiveLoginAction {
     user: User;
 }
 
-type KnownLoginAction = RequestLoginAction | ReceiveLoginAction;
+interface ErrorLoginAction {
+    type: 'ERROR_LOGIN';
+}
+
+type KnownLoginAction = RequestLoginAction | ReceiveLoginAction | ErrorLoginAction | ShowMessageAction;
 
 interface Logout {
     type: 'LOGOUT';
@@ -77,6 +107,15 @@ export const actionCreators = {
                 LoggedUser.set({email: viewModel.email, token: data.token});
                 dispatch({ type: 'RECEIVE_REGISTER', user: {email: viewModel.email, token: data.token}});
                 onSuccess();
+            })
+            .catch(r => {
+                dispatch({type: "ERROR_REGISTER"});
+                dispatch({
+                    type: 'SHOW_MESSAGE',
+                    props:{
+                        message: r.message,
+                        variant: "error"
+                    }});
             });
 
         dispatch({ type: 'REQUEST_REGISTER'});
@@ -93,9 +132,14 @@ export const actionCreators = {
                 dispatch({ type: 'RECEIVE_LOGIN', user: {email: viewModel.email, token: data.token}});
                 onSuccess();
             })
-            .catch(()=>{
-
-                let a = 0;
+            .catch(r=>{
+                dispatch({type: "ERROR_LOGIN"});
+                dispatch({
+                    type: 'SHOW_MESSAGE',
+                    props:{
+                        message: r.message,
+                        variant: "error"
+                    }});
             });
 
         dispatch({ type: 'REQUEST_LOGIN'});
@@ -123,6 +167,12 @@ export const reducer: Reducer<State> = (state: State | undefined, incomingAction
         case 'RECEIVE_REGISTER':
             return {
                 ...state,
+                email: action.user.email,
+                registerInProgress: false,
+            };
+        case 'ERROR_REGISTER':
+            return {
+                ...state,
                 registerInProgress: false,
             };
         case 'REQUEST_LOGIN':
@@ -133,11 +183,18 @@ export const reducer: Reducer<State> = (state: State | undefined, incomingAction
         case 'RECEIVE_LOGIN':
             return {
                 ...state,
+                email: action.user.email,
+                registerInProgress: false,
+            };
+        case 'ERROR_LOGIN':
+            return {
+                ...state,
                 registerInProgress: false,
             };
         case 'LOGOUT':
             return {
                 ...state,
+                email: undefined,
             };
         default:
             return state;
