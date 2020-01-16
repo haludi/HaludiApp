@@ -10,7 +10,7 @@ import {FlightTakeoff} from "@material-ui/icons";
 import {connect} from "react-redux";
 import {ApplicationState} from "../../store";
 import {State as NotificationState} from "../../store/PopupMessage";
-import {Redirect, useHistory} from "react-router";
+import { useHistory} from "react-router";
 
 const StyledMenu = withStyles({
     paper: {

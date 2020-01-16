@@ -4,38 +4,33 @@ import Button from '@material-ui/core/Button';
 
 import {ApplicationState} from "../../store";
 import {actionCreators, FuelTrackingRecord, FuelTrackingRecordsState} from "../../store/FuelTrackingRecordsStore";
-import {createStyles, makeStyles, Theme, useMediaQuery, useTheme} from "@material-ui/core";
+import {Theme, } from "@material-ui/core";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import DialogContent from "@material-ui/core/DialogContent";
 import DialogActions from "@material-ui/core/DialogActions";
-import Dialog from "@material-ui/core/Dialog";
+import { withStyles} from '@material-ui/core/styles';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import FtrList from "./FtrList";
 import SubmitButton from "../common/SubmitButton";
 import Form from "../common/Form";
 import * as Notification from "../../store/PopupMessage";
+import {LoggedUser} from "../../store/UserStore";
+import BackgroundDialog from "./BackgroundDialog";
 
-const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
+const styles = (theme: Theme) => {
+    return {
+        root: {
+        },
         form: {
             display: "flex",
-            "flex-direction": "column",
-            margin: "0 auto",
-            backgroundColor: "rgba(255, 255, 255, 0.2)",
-            padding: "10px",
-        },
-        dialogIfNotMd: {
-            padding: "150px",
-        },
-        dialog: {
-            "background-size": "cover",
-            "background-repeat": "no-repeat",
-            "background-position": "center center",
-            backgroundColor: "rgba(252,255,238,0.5)",
+                "flex-direction": "column",
+                margin: "0 auto",
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                padding: "10px",
         },
         loading: {
             display: 'flex',
-            '& > * + *': {
+                '& > * + *': {
                 marginLeft: theme.spacing(2),
             },
         },
@@ -44,18 +39,15 @@ const useStyles = makeStyles((theme: Theme) =>
         },
         input: {
             backgroundColor: "#1976d2",
-            color: "white",
-            margin: "20px 10px 0  0",
-            borderRadius: "0 10px 0 10px"
+                color: "white",
+                margin: "20px 10px 0  0",
+                borderRadius: "0 10px 0 10px"
         },
         inputUp:{
             marginBottom: "7.7em"
         },
-        hidden:{
-            visibility: "hidden"
-        }
-    }),
-);
+    };
+};
 
 type FieldType = "fuelFilled" | "cost" | "mileage";
 const inputFields : { [K in FieldType] : string } = {
@@ -64,53 +56,127 @@ const inputFields : { [K in FieldType] : string } = {
     "mileage": "Mileage",
 };
 
-type RecordFuelTrackingTableProps =
+interface ImageState {
+    isLoading?:boolean, 
+    image?: {
+        data: Blob,
+        internalUrl: any,
+        publicUrl: string
+    }
+}
+
+type ImageType = "bump" | "motorbike";
+type ImagesState = { [K in ImageType] : ImageState } & {current: ImageType, index: number | null};
+
+type Props =
     {
+        theme: Theme,
         fuelTrackingRecords: FuelTrackingRecordsState,
-        popupMessage: Notification.State
+        popupMessage: Notification.State,
+        classes: any,
     }
     & typeof actionCreators;
 
-type BackgroundType = "bumpPanelPicture" | "motorbikePanelPicture"; 
+type State = {
+    toSubmit: FuelTrackingRecord | null,
+    isPosting: boolean,
+    hiddenContent: boolean,
+    imagesState: ImagesState,
+}
 
-function RecordFuelTrackingTable({fuelTrackingRecords, popupMessage, fillFtrDetails}:  RecordFuelTrackingTableProps) {
-    const classes = useStyles();
+class RecordFuelTrackingTable extends React.Component<Props, State> {
+    constructor(props: Props) {
+        super(props);
+        this.state = {
+            toSubmit: null,
+            isPosting: false,
+            hiddenContent: false,
+            imagesState: {
+                current: "bump",
+                bump: {},
+                motorbike: {},
+                index: null
+            }
+        };
 
-    const [toSubmit, setToSubmit] = React.useState<FuelTrackingRecord | null>(null);
-    const [index, setIndex] = React.useState<number | null>(null);
-    const [isPosting, setIsPosting] = React.useState<boolean>(false);
-    const [hiddenContent, setHiddenContent] = React.useState<boolean>(false);
-    const [background, setBackground] = React.useState<BackgroundType>("bumpPanelPicture");
+        this.getBackgroundPictures = this.getBackgroundPictures.bind(this); 
+        this.getBackgroundPicture = this.getBackgroundPicture.bind(this); 
+        this.handleToggleHide = this.handleToggleHide.bind(this);
+        this.handleCancel = this.handleCancel.bind(this);
+        this.handleSubscribe = this.handleSubscribe.bind(this);
+        this.onChange = this.onChange.bind(this);
+        this.onFocus = this.onFocus.bind(this);
+    }
 
-    
-    const handleToggleHide = () => {
-        setHiddenContent(!hiddenContent);
-    };
-    
-    const handleCancel = () => {
-        setIndex(null);
-        setToSubmit(null);
-    };
-
-    const handleSubscribe = () => {
-        if(toSubmit)
+    getBackgroundPicture(url: string, imageType: ImageType) {
+        let newState = {...this.state};
+        const imageState = this.state.imagesState[imageType];
+        if (!imageState.isLoading && !(imageState.image && imageState.image.publicUrl === url))
         {
-            setIsPosting(true);
-            
-            fillFtrDetails(toSubmit, () => {
-                setIndex(null);
-                setIsPosting(false);
-                setToSubmit(null);
+        newState.imagesState[imageType].isLoading = true;
+        this.setState(newState);
+        LoggedUser.getRequest<Blob>(url, {responseType: 'blob'})
+            .then(r => {
+                let internalUrl = URL.createObjectURL(r.data);
+                let newState = {...this.state};
+                newState.imagesState[imageType] = {
+                    isLoading: false,
+                    image: {
+                        data: r.data,
+                        internalUrl: internalUrl,
+                        publicUrl: url
+                    }
+                };
+                this.setState(newState);
+            })
+        }
+    }
+    
+    getBackgroundPictures(i: number) {
+        if(this.state.imagesState.index !== i)
+        {
+            let newState = {...this.state};
+            newState.imagesState.index = i;
+            newState.imagesState.bump.image = undefined;
+            newState.imagesState.motorbike.image = undefined;
+            this.setState(newState);
+        }
+        const id = this.props.fuelTrackingRecords.records[i].id;
+        this.getBackgroundPicture(`/api/v1/${id}/image/bumpPanelPicture`, "bump");
+        this.getBackgroundPicture(`/api/v1/${id}/image/motorbikePanelPicture`, "motorbike");
+    };
+
+    handleToggleHide() {
+        this.setState({...this.state, hiddenContent: !this.state.hiddenContent});
+    };
+
+    handleCancel() {
+        let newState = {...this.state};
+        newState.imagesState.index = null;
+        newState.toSubmit = null;
+        this.setState(newState);
+    };
+
+    handleSubscribe() {
+        if (this.state.toSubmit) {
+            this.setState({...this.state, isPosting: true});
+
+        this.props.fillFtrDetails(this.state.toSubmit, () => {
+                let newState = {...this.state};
+                newState.imagesState.index = null;
+                newState.isPosting = false;
+                newState.toSubmit = null;
+                this.setState(newState);
             },
-                () => setIsPosting(false));
+            () => this.setState({...this.state, isPosting: false}))
         }
     };
 
-    function onChange(field: FieldType, value: string) {
-        if(index == null)
+    onChange(field: FieldType, value: string) {
+        if (this.state.imagesState.index == null)
             return;
 
-        const localToSubmit = toSubmit?? fuelTrackingRecords.records[index];
+        const localToSubmit = this.state.toSubmit ?? this.props.fuelTrackingRecords.records[this.state.imagesState.index];
         let newObj = {...localToSubmit};
         switch (field) {
             case "fuelFilled":
@@ -125,53 +191,56 @@ function RecordFuelTrackingTable({fuelTrackingRecords, popupMessage, fillFtrDeta
             default:
                 throw new Error(`Unexpected field: ${field}. value:${value}`);
         }
-        setToSubmit(newObj);
+        this.setState({...this.state, toSubmit: newObj});
     }
-    function onFocus(field: FieldType){
-        if(field == "mileage"){
-            if(background != "motorbikePanelPicture")
-                setBackground("motorbikePanelPicture");
+
+    onFocus(field: FieldType) {
+        let newState = {...this.state};
+        if (field === "mileage") {
+            if (this.state.imagesState.current !== "motorbike")
+                newState.imagesState.current = "motorbike";
+        } else {
+            if (this.state.imagesState.current !== "bump")
+                newState.imagesState.current = "bump";
         }
-        else{
-            if(background != "bumpPanelPicture")
-                setBackground("bumpPanelPicture");
-        }
+        this.setState(newState);
     }
     
-    const theme = useTheme();
-    const ifMd = useMediaQuery(theme.breakpoints.down('md'));
+    render() {
+        const {fuelTrackingRecords, popupMessage, classes} = this.props;
+        const {toSubmit, imagesState, hiddenContent, isPosting} = this.state;
 
-    const canSubscribe = (toSubmit && toSubmit.mileage && toSubmit.cost && toSubmit.fuelFilled  && !popupMessage.notificationProps  && true) || false;
+        const canSubscribe = (toSubmit && toSubmit.mileage && toSubmit.cost && toSubmit.fuelFilled && !popupMessage.notificationProps && true) || false;
 
-    return (
-        <div>
-            <Dialog fullScreen={ifMd} open={index !== null} onClose={handleCancel}
-                    aria-labelledby="update-dialog-title">
-                <div
-                    className={`${classes.dialog} ${ifMd ? "" : classes.dialogIfNotMd}`}
-                    style={index != null ? {backgroundImage: `url('/api/v1/${fuelTrackingRecords.records[index].id}/image/${background}')`} : undefined}>
+        let url = undefined;
+            const image = imagesState[imagesState.current].image;
+            if (image) {
+                url = `url(${image.internalUrl})`;
+            }
+
+        return (
+            <div>
+                <BackgroundDialog open={imagesState.index !== null} onClose={this.handleCancel} url={url} aria-labelledby="update-dialog-title">
                     <DialogTitle id="update-dialog-title">Fill Details</DialogTitle>
-                    <DialogContent className={hiddenContent ? classes.hidden : ""}>
-                        <Form inputFields={inputFields} onChange={onChange} onFocus={onFocus}/>
+                    <DialogContent style={{visibility: hiddenContent ? "hidden" : "visible"}}>
+                        <Form inputFields={inputFields} onChange={this.onChange} onFocus={this.onFocus}/>
                     </DialogContent>
                     <DialogActions>
-                        <Button onClick={handleToggleHide} color="primary">
+                        <Button onClick={this.handleToggleHide} color="primary">
                             {hiddenContent ? "Show" : "Hide"}
                         </Button>
-                        <Button onClick={handleCancel} color="primary">
+                        <Button onClick={this.handleCancel} color="primary">
                             Cancel
                         </Button>
-                        <SubmitButton isInProgress={isPosting} disabled={!canSubscribe} handleSubmit={handleSubscribe}/>
+                        <SubmitButton isInProgress={isPosting} disabled={!canSubscribe} handleSubmit={this.handleSubscribe}/>
                     </DialogActions>
-                </div>
-            </Dialog>
-            {(fuelTrackingRecords.isLoading
-                && <div className={classes.loading} ><CircularProgress /></div>)
-            ||(<FtrList handleSelect={(selectedIndex) => {
-                setIndex(selectedIndex);
-            }} fuelTrackingRecords={fuelTrackingRecords.records}/>)}
-        </div>
-    );
+                </BackgroundDialog>
+                {(fuelTrackingRecords.isLoading
+                    && <div className={classes.loading}><CircularProgress/></div>)
+                || (<FtrList handleSelect={this.getBackgroundPictures} fuelTrackingRecords={fuelTrackingRecords.records}/>)}
+            </div>
+        );
+    }
 }
 
 export default connect(
@@ -181,4 +250,4 @@ export default connect(
             popupMessage: state.popupMessage
         }},
     actionCreators
-)(RecordFuelTrackingTable as any);
+)(withStyles(styles, {withTheme:true})(RecordFuelTrackingTable) as any);

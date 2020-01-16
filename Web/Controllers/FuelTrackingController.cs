@@ -35,7 +35,7 @@ namespace Web.Controllers
         {
             using var session = _store.OpenAsyncSession();
             var query = session.Query<FuelTrackingRecord>()
-                .Where(r => r.Id == User.Identity.Name && (r.Mileage == null || r.FuelFilled == null || r.Cost == null));
+                .Where(r => r.UserId == User.Identity.Name && (r.Mileage == null || r.FuelFilled == null || r.Cost == null));
 
             if (pageNo.HasValue && pageSize.HasValue)
             {
@@ -53,8 +53,8 @@ namespace Web.Controllers
         public async Task<Stream> GetImageOf(string id, string imageOf)
         {
             using var session = _store.OpenAsyncSession();
-            var isBelongToUser = await session.Query<FuelTrackingRecord>().AnyAsync(r => r.Id == id && r.UserId == User.Identity.Name);
-            if(false == isBelongToUser)
+            var record = await session.LoadAsync<FuelTrackingRecord>(IdWithPrefix(id));
+            if(record.UserId != User.Identity.Name)
                 throw new UnauthorizedRequestException();
             
             var image = await _store.Operations.SendAsync(new GetAttachmentOperation($"FuelTrackingRecords/{id}",
@@ -69,19 +69,22 @@ namespace Web.Controllers
         [Route("/api/v1/fuel-tracking/take-photos")]
         public async Task<FuelTrackingRecord> Post(IFormCollection form)
         {
+            var now = DateTime.UtcNow;
             using var session = _store.OpenAsyncSession();
             var userId = User.Identity.Name;
             if(false == await session.Advanced.ExistsAsync(userId))
                 throw new UnauthorizedRequestException();
             
             var containsKey = form.ContainsKey("date");
-            var dateTime = containsKey ? DateTime.Parse(form["date"]) : DateTime.Now;
+            var dateTime = containsKey ? DateTime.Parse(form["date"]) : now;
             var record = new FuelTrackingRecord
             {
                 UserId = userId,
                 DateTime = dateTime.ToUniversalTime()
             };
             await session.StoreAsync(record);
+            var metadata = session.Advanced.GetMetadataFor(record);
+            metadata["CreatedAt"] = now;
             await session.SaveChangesAsync();
                 
             foreach (var file in form.Files)
@@ -133,6 +136,11 @@ if(this.UserId == args.UserId)
                 case PatchStatus.NotModified:
                     throw new UnauthorizedRequestException();
             }
+        }
+
+        private string IdWithPrefix(string id)
+        {
+            return $"FuelTrackingRecords/{id}";
         }
     }
 }

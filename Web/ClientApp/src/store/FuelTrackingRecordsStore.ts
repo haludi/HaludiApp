@@ -1,5 +1,4 @@
 import {Action, Reducer} from 'redux';
-import axios from 'axios';
 import {AppThunkAction} from './';
 import * as PopupMessage from './PopupMessage'
 import { LoggedUser } from "./UserStore";

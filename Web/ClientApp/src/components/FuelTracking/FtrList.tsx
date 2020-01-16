@@ -13,18 +13,18 @@ const useStyles = makeStyles((theme: Theme) =>
 );
 
 interface Props {
-    handleSelect: (selectedIndex: any) => void;
+    handleSelect: (selectedIndex: number) => void;
     fuelTrackingRecords: FuelTrackingRecord[];
 }
 
-export default function FtrList(Props: Props) {
+export default function FtrList({handleSelect, fuelTrackingRecords}: Props) {
     const classes = useStyles();
 
     return <List
         singleSelection
-        handleSelect={Props.handleSelect}
+        handleSelect={handleSelect}
     >
-        {Props.fuelTrackingRecords.map((r) =>
+        {fuelTrackingRecords.map((r) =>
             <ListItem key={r.dateTime} className={classes.item}>
                 <ListItemGraphic tabIndex={10} graphic={<MaterialIcon icon='photo'/>}/>
                 <ListItemText primaryText={new Date(r.dateTime).toLocaleString()}/>

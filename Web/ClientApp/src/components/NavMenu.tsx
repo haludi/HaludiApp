@@ -42,8 +42,8 @@ class NavMenu extends React.PureComponent<Props> {
                                 <NavItem>
                                     <NavLink tag={Link} className="text-dark" to="/fuel-tracking">Fuel Tracking</NavLink>
                                 </NavItem>
-                                {LoggedUser.get() 
-                                && <Logout/>
+                                {(LoggedUser.get() 
+                                && <Logout/>)
                                 || <React.Fragment>
                                       <NavItem>
                                           <Register/>

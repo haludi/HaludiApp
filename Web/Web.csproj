@@ -26,11 +26,8 @@
     <None Include="ClientApp\src\components\common\ImgDialog.tsx" />
     <None Include="ClientApp\src\components\common\SubmitButton.tsx" />
     <None Include="ClientApp\src\components\FuelTracking\FuelTracking.tsx" />
-    <None Include="ClientApp\src\components\FuelTracking\RecordFuelTrackingTable .tsx" />
     <None Include="ClientApp\src\components\PopupMessage.tsx" />
     <None Include="ClientApp\src\components\Test.tsx" />
-    <None Include="ClientApp\src\components\user\Logout.tsx" />
-    <None Include="ClientApp\src\components\user\PopupMessage.tsx" />
     <None Include="ClientApp\src\components\user\Register.tsx" />
     <None Include="ClientApp\src\serviceWorker.ts" />
     <None Include="ClientApp\src\store\PopupMessage.ts" />
@@ -41,6 +38,7 @@
 
   <ItemGroup>
     <TypeScriptCompile Include="ClientApp\src\components\common\Form.tsx" />
+    <TypeScriptCompile Include="ClientApp\src\components\FuelTracking\BackgroundDialog.tsx" />
     <TypeScriptCompile Include="ClientApp\src\components\FuelTracking\RecordFuelTrackingTable.tsx" />
     <TypeScriptCompile Include="ClientApp\trash\RecordFuelTrackingTable .trash" />
     <TypeScriptCompile Include="ClientApp\trash\UpdateFtrForm.trash" />
